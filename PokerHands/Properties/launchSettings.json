@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PokerHands": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\patri\\code\\pokerHandsProject\\poker.txt"
+    }
+  }
+}
