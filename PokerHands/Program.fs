@@ -1,11 +1,6 @@
 ﻿open System
 open System.IO
 
-let readLines (filePath:string) = 
-    seq { use reader = new StreamReader(filePath) 
-        while not reader.EndOfStream do
-            yield reader.ReadLine() }
-
 type Player = PlayerOne | PlayerTwo
 
 type Rank = int
@@ -35,34 +30,34 @@ let rankToInt rank =
     | OnePair _ -> 2
     | HighCard _ -> 1
 
-let isPlayerOne player =
-    player = PlayerOne
+let parseCardValue rawValue = 
+    match rawValue with
+    | 'A' -> 14
+    | 'K' -> 13
+    | 'Q' -> 12
+    | 'J' -> 11
+    | 'T' -> 10
+    | c when c >= '2' && c <= '9' -> int (string c) 
+    | _ -> failwith $"Invalid value {rawValue}"   
 
-let parseCardTokens (cardTokens:list<string>) =
-    let parseValue rawValue =
-        match rawValue with
-        | 'A' -> 14
-        | 'K' -> 13
-        | 'Q' -> 12
-        | 'J' -> 11
-        | 'T' -> 10
-        | c when c >= '2' && c <= '9' -> int (string c) 
-        | _ -> failwith $"Invalid value {rawValue}"
-
+let parseCardTokens (cardTokens: string list) =
     cardTokens 
-    |> List.map(fun ct -> (parseValue ct.[0], ct.[1])) 
+    |> List.map(fun ct -> (parseCardValue ct.[0], ct.[1])) 
     |> List.unzip
 
-let evaluateMultiples (values: int list) =
+let groupByCount (values: int list) =
     let group acc (value, counts) =
         acc |> Map.change counts (fun current -> 
             match current with
             | None -> Some [value]
-            | Some existing -> Some (existing @ [value])
-        )
+            | Some existing -> Some (existing @ [value]))
 
-    let counts = List.countBy (fun v -> v) values
-    let groups = List.fold group Map.empty counts
+    values 
+    |> List.countBy id 
+    |> List.fold group Map.empty
+
+let evaluateMultiples (values: int list) =
+    let groups = groupByCount values
 
     let hasFourOfAKind = Map.containsKey 4 groups
     let hasThreeOfAKind = Map.containsKey 3 groups
@@ -76,7 +71,7 @@ let evaluateMultiples (values: int list) =
     | (true, 0) -> ThreeOfAKind groups.[3].Head
     | (true, 1) -> FullHouse groups.[3].Head
     | (false, 1) -> OnePair (pair = groups.[2].Head, kickers = List.sortDescending groups.[1])
-    | (false, 2) -> TwoPairs (highPair = groups.[2].[0], lowPair = groups.[2].[1], kicker = groups.[1].Head)
+    | (false, 2) -> TwoPairs (highPair = List.head groups.[2], lowPair = List.last groups.[2], kicker = List.head groups.[1])
     | (false, 0) -> 
         if hasFourOfAKind then
             FourOfAKind groups.[4].Head
@@ -87,7 +82,7 @@ let evaluateMultiples (values: int list) =
 let evaluateSequenceAndSuits (values: int list) (suits: char list) =
     let isFlush = suits |> List.distinct |> List.length = 1
     
-    let sortedValues = List.sortByDescending (fun v -> v) values
+    let sortedValues = List.sortByDescending id values
     let isStraight = (sortedValues = [sortedValues.[0] .. -1 .. sortedValues.[4]])
 
     match (isFlush, isStraight) with
@@ -107,29 +102,22 @@ let handCreate (cardTokens: string list) =
     | HighCard _ -> evaluateSequenceAndSuits values suits
     | other -> other
 
-let rec compareList one two = 
-    match (one, two) with
-    | ([], []) -> 0
-    | (f :: fTail, s :: sTail) -> 
-        match compare f s with
-        | 0 -> compareList fTail sTail
-        | result -> result
-    | _ -> failwith $""
-
 let breakRankTie handOne handTwo = 
     match (handOne, handTwo) with
-    | (RoyalFlush, RoyalFlush) -> 0
-    | (StraightFlush one, StraightFlush two) -> compare one two
-    | (FourOfAKind one, FourOfAKind two) -> compare one two
-    | (FullHouse one, FullHouse two) -> compare one two
-    | (Straight one, Straight two) -> compare one two
-    | (Flush cardsOne, Flush cardsTwo) -> compareList cardsOne cardsTwo
-    | (ThreeOfAKind one, ThreeOfAKind two) -> compare one two
+    | (StraightFlush one, StraightFlush two)
+    | (FourOfAKind one, FourOfAKind two)
+    | (FullHouse one, FullHouse two)
+    | (Straight one, Straight two)
+    | (ThreeOfAKind one, ThreeOfAKind two) -> 
+        compare one two
+    | (Flush cardsOne, Flush cardsTwo)
+    | (HighCard cardsOne, HighCard cardsTwo) -> 
+        compare cardsOne cardsTwo
     | (TwoPairs (highPairOne, lowPairOne, kickerOne), TwoPairs (highPairTwo, lowPairTwo, kickerTwo)) ->
-        compareList [highPairOne, lowPairOne, kickerOne] [highPairTwo, lowPairTwo, kickerTwo]        
+        compare [highPairOne; lowPairOne; kickerOne] [highPairTwo; lowPairTwo; kickerTwo]        
     | (OnePair (pairOne, kickersOne), OnePair (pairTwo, kickersTwo)) ->
-        compareList [pairOne, kickersOne] [pairTwo, kickersTwo]
-    | (HighCard cardsOne, HighCard cardsTwo) -> compareList cardsOne cardsTwo
+        compare (pairOne :: kickersOne) (pairTwo :: kickersTwo)
+    | (RoyalFlush, RoyalFlush) -> 0
     | _ -> failwith $"Both hands need to have the same rank in order to break a rank tie."
 
 let winnerOfRound (line: string) =
@@ -151,14 +139,19 @@ let winnerOfRound (line: string) =
     
 let countWins player lines =
     lines
-    |> Seq.map(fun line -> winnerOfRound line)
-    |> Seq.filter isPlayerOne
+    |> Seq.map winnerOfRound
+    |> Seq.filter (fun p -> p = player)
     |> Seq.length
+
+let readLines (filePath:string) = 
+    seq { use reader = new StreamReader(filePath) 
+        while not reader.EndOfStream do
+            yield reader.ReadLine() }
 
 [<EntryPoint>]
 let main args =
     readLines args.[0] 
     |> countWins PlayerOne 
-    |> printfn "%i"
+    |> printfn "Player 1 wins: %i"
 
     0
