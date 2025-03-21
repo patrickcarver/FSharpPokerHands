@@ -87,7 +87,7 @@ let evaluateSequenceAndSuits (values: int list) (suits: char list) : Hand =
     | (true, true) when sortedValues = [14; 13; 12; 11; 10] -> RoyalFlush 
     | (true, true) -> StraightFlush sortedValues.Head
     
-let handCreate (cardTokens: string list) : Hand =
+let createHand (cardTokens: string list) : Hand =
     let (values, suits) = parseCardTokens cardTokens
     let multipleHand = evaluateMultiples values
 
@@ -97,8 +97,8 @@ let handCreate (cardTokens: string list) : Hand =
 
 let winnerOfRound (line: string) : Player =
     let cardTokens = line.Split " " |> Array.toList
-    let handOne = handCreate(cardTokens[0..4])
-    let handTwo = handCreate(cardTokens[5..9])
+    let handOne = createHand cardTokens[0..4]
+    let handTwo = createHand cardTokens[5..9]
 
     match (handOne, handTwo) with
     | (h1, h2) when h1 > h2 -> PlayerOne
