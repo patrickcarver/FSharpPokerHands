@@ -5,6 +5,8 @@ type Player = PlayerOne | PlayerTwo
 
 type Rank = int
 
+type RankComparison = Greater | Less | Equal
+
 type Hand =
 | RoyalFlush
 | StraightFlush of rank: Rank
@@ -129,23 +131,30 @@ let breakRankTie handOne handTwo =
     | (RoyalFlush, RoyalFlush) -> 0
     | _ -> failwith $"Both hands need to have the same rank in order to break a rank tie."
 
-let winnerOfRound (line: string) =
+let compareRanks rankOne rankTwo =
+    match compare rankOne rankTwo with
+    | x when x > 0 -> Greater
+    | x when x < 0 -> Less
+    | 0 -> Equal
+    | _ -> failwith "Unreachable: compare should only return -1, 0, or 1"
+
+let winnerOfRound (line: string) : Player =
     let cardTokens = line.Split " " |> Array.toList
     let handOne = handCreate(cardTokens[0..4])
     let handTwo = handCreate(cardTokens[5..9])
 
-    let rankResult = compare (rankToInt handOne) (rankToInt handTwo) 
-    match rankResult with
-    | 1 -> PlayerOne
-    | -1 -> PlayerTwo
-    | 0 -> 
+    let rankComparison = compareRanks (rankToInt handOne) (rankToInt handTwo) 
+
+    match rankComparison with
+    | Greater -> PlayerOne
+    | Less -> PlayerTwo
+    | Equal -> 
         match breakRankTie handOne handTwo with
-        | 1 -> PlayerOne
-        | -1 -> PlayerTwo
-        | 0 -> failwith $"The two hands have the same rank and same value of cards; this is a tie which is not supposed to happen"
-        | _ -> failwith $""
-    | _ -> failwith $"The result of rank compare resulted in an impossible value: {rankResult}"
-    
+        | x when x > 0 -> PlayerOne
+        | x when x < 0 -> PlayerTwo
+        | 0 -> failwith "Tie detected: Hands have identical rank and card values, which should not be possible"
+        | _ -> failwith "Unreachable: breakRankTie should only return -1, 0, or 1"
+
 let countWins player lines =
     lines
     |> Seq.map winnerOfRound
