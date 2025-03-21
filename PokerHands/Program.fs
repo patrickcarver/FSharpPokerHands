@@ -56,30 +56,39 @@ let groupByCount (values: int list) =
     |> List.countBy id 
     |> List.fold group Map.empty
 
-let evaluateMultiples (values: int list) =
+let tryNumPairs groups =
+    groups 
+    |> Map.tryFind 2 
+    |> Option.map List.length 
+    |> Option.defaultValue 0    
+
+let evaluateMultiples (values: int list) : Hand =
     let groups = groupByCount values
 
-    let hasFourOfAKind = Map.containsKey 4 groups
-    let hasThreeOfAKind = Map.containsKey 3 groups
-    let numPairs = 
-        if Map.containsKey 2 groups then
-            List.length groups.[2]
-        else
-            0
+    let four = groups |> Map.tryFind 4
+    let three = groups |> Map.tryFind 3
+    let ones = groups |> Map.tryFind 1 |> Option.defaultValue []
+    let numPairs = tryNumPairs groups
+    
+    match (four, three, numPairs) with
+    | (Some vals, _, _) -> FourOfAKind vals.Head
+    | (None, Some vals, 0) -> ThreeOfAKind vals.Head
+    | (None, Some vals, 1) -> FullHouse vals.Head
+    | (None, None, 1) -> 
+        OnePair (
+            pair = groups.[2].Head, 
+            kickers = List.sortDescending ones)
+    | (None, None, 2) -> 
+        TwoPairs (
+            highPair = List.head groups.[2], 
+            lowPair = List.last groups.[2], 
+            kicker = List.head ones)
+    | (None, None, 0) when not values.IsEmpty -> 
+        HighCard (List.sortDescending ones)
+    | _ -> failwith $"Invalid hand configuration: {values}"
 
-    match (hasThreeOfAKind, numPairs) with
-    | (true, 0) -> ThreeOfAKind groups.[3].Head
-    | (true, 1) -> FullHouse groups.[3].Head
-    | (false, 1) -> OnePair (pair = groups.[2].Head, kickers = List.sortDescending groups.[1])
-    | (false, 2) -> TwoPairs (highPair = List.head groups.[2], lowPair = List.last groups.[2], kicker = List.head groups.[1])
-    | (false, 0) -> 
-        if hasFourOfAKind then
-            FourOfAKind groups.[4].Head
-        else
-            HighCard groups.[1]
-    | _ -> failwith $"This number of pairs: {numPairs} is impossible"
 
-let evaluateSequenceAndSuits (values: int list) (suits: char list) =
+let evaluateSequenceAndSuits (values: int list) (suits: char list) : Hand =
     let isFlush = suits |> List.distinct |> List.length = 1
     
     let sortedValues = List.sortByDescending id values
@@ -94,7 +103,7 @@ let evaluateSequenceAndSuits (values: int list) (suits: char list) =
         | [14; 13; 12; 11; 10] -> RoyalFlush
         | _ -> StraightFlush sortedValues.Head
     
-let handCreate (cardTokens: string list) =
+let handCreate (cardTokens: string list) : Hand =
     let (values, suits) = parseCardTokens cardTokens
     let multipleHand = evaluateMultiples values
 
