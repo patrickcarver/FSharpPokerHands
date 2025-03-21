@@ -111,18 +111,25 @@ let countWins player lines =
     |> Seq.filter (fun p -> p = player)
     |> Seq.length
 
+let validateInputFile args =
+    match args with
+    | [||] -> 
+        Error "Missing input file name parameter."
+    | [|fileName|] when not (File.Exists fileName) -> 
+        Error $"The file '{fileName}' does not exist."
+    | [|fileName|] -> 
+        Ok fileName
+    | _ -> 
+        Error "Too many arguments provided."
+
 [<EntryPoint>]
 let main args =
-    if Array.isEmpty args then
-        printfn "Missing input file name parameter."
+    match validateInputFile args with
+    | Ok fileName -> 
+        File.ReadLines fileName 
+        |> countWins PlayerOne 
+        |> printfn "Player 1 wins: %i"
+        0
+    | Error message ->
+        printfn "%s" message
         1
-    else
-        let fileName = args.[0]
-        if not (File.Exists fileName) then
-            printfn $"The file '{fileName}' does not exist"
-            1
-        else            
-            File.ReadLines args.[0] 
-            |> countWins PlayerOne 
-            |> printfn "Player 1 wins: %i"
-            0
