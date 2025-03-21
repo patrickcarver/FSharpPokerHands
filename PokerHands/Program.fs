@@ -121,8 +121,16 @@ let readLines (filePath:string) : string seq =
 
 [<EntryPoint>]
 let main args =
-    readLines args.[0] 
-    |> countWins PlayerOne 
-    |> printfn "Player 1 wins: %i"
-
-    0
+    if Array.isEmpty args then
+        printfn "Missing input file name parameter."
+        1
+    else
+        let fileName = args.[0]
+        if not (File.Exists fileName) then
+            printfn $"The file '{fileName}' does not exist"
+            1
+        else            
+            readLines args.[0] 
+            |> countWins PlayerOne 
+            |> printfn "Player 1 wins: %i"
+            0
