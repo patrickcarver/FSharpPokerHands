@@ -37,7 +37,7 @@ let groupByCount (values: int list) =
         acc |> Map.change counts (fun current -> 
             match current with
             | None -> Some [value]
-            | Some existing -> Some (existing @ [value]))
+            | Some existing -> Some (value :: existing))
 
     values 
     |> List.countBy id 
