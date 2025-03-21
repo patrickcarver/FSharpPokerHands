@@ -104,7 +104,7 @@ let breakRankTie handOne handTwo =
     | (RoyalFlush, RoyalFlush) -> 0
     | _ -> failwith $"Both hands need to have the same rank in order to break a rank tie."
 
-let winnerOfRound (line: string) : Player =
+let winnerOfRound (line: string) =
     let cardTokens = line.Split " " |> Array.toList
 
     if List.length cardTokens <> 10 then
@@ -113,17 +113,18 @@ let winnerOfRound (line: string) : Player =
         let handOne = handCreate(cardTokens[0..4])
         let handTwo = handCreate(cardTokens[5..9])
 
-        match (handOne, handTwo) with
-        | (h1, h2) when h1 > h2 -> PlayerOne
-        | (h1, h2) when h1 < h2 -> PlayerTwo
-        | (h1, h2) when h1 = h2 ->
-            match breakRankTie handOne handTwo with
-            | x when x > 0 -> PlayerOne
-            | x when x < 0 -> PlayerTwo
-            | 0 -> failwith "Tie detected: Hands have identical rank and card values, which should not be possible."
-            | _ -> failwith "Unreachable: breakRankTie should only return -1, 0, or 1."
-        | _ -> failwith "Unreachable: Hands are always >, <, or =."
-
+    let rankResult = compare (rankToInt handOne) (rankToInt handTwo) 
+    match rankResult with
+    | 1 -> PlayerOne
+    | -1 -> PlayerTwo
+    | 0 -> 
+        match breakRankTie handOne handTwo with
+        | 1 -> PlayerOne
+        | -1 -> PlayerTwo
+        | 0 -> failwith $"The two hands have the same rank and same value of cards; this is a tie which is not supposed to happen"
+        | _ -> failwith $""
+    | _ -> failwith $"The result of rank compare resulted in an impossible value: {rankResult}"
+    
 let countWins player lines =
     lines
     |> Seq.map winnerOfRound
