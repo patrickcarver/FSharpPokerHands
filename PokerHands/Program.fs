@@ -111,11 +111,6 @@ let countWins player lines =
     |> Seq.filter (fun p -> p = player)
     |> Seq.length
 
-let readLines (filePath:string) : string seq = 
-    seq { use reader = new StreamReader(filePath) 
-        while not reader.EndOfStream do
-            yield reader.ReadLine() }
-
 [<EntryPoint>]
 let main args =
     if Array.isEmpty args then
@@ -127,7 +122,7 @@ let main args =
             printfn $"The file '{fileName}' does not exist"
             1
         else            
-            readLines args.[0] 
+            File.ReadLines args.[0] 
             |> countWins PlayerOne 
             |> printfn "Player 1 wins: %i"
             0
