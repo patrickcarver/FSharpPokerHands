@@ -1,4 +1,6 @@
-﻿open System
+﻿
+
+open System
 open System.IO
 
 type Player = PlayerOne | PlayerTwo
@@ -6,15 +8,15 @@ type Player = PlayerOne | PlayerTwo
 type Rank = int
 
 type Hand =
-| HighCard of cards: Rank list
+| HighCard of Rank list
 | OnePair of pair: Rank * kickers: Rank list
 | TwoPairs of highPair: Rank * lowPair: Rank * kicker: Rank
-| ThreeOfAKind of rank: Rank
-| Flush of cards: Rank list
-| Straight of rank: Rank
-| FullHouse of rank: Rank
-| FourOfAKind of rank: Rank
-| StraightFlush of rank: Rank
+| ThreeOfAKind of Rank
+| Flush of Rank list
+| Straight of Rank
+| FullHouse of Rank
+| FourOfAKind of Rank
+| StraightFlush of Rank
 | RoyalFlush
 
 let parseCardValue rawValue = 
