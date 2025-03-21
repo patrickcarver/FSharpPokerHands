@@ -5,8 +5,6 @@ type Player = PlayerOne | PlayerTwo
 
 type Rank = int
 
-type RankComparison = Greater | Less | Equal
-
 type Hand =
 | RoyalFlush
 | StraightFlush of rank: Rank
@@ -18,19 +16,6 @@ type Hand =
 | TwoPairs of highPair: Rank * lowPair: Rank * kicker: Rank
 | OnePair of pair: Rank * kickers: Rank list
 | HighCard of cards: Rank list
-
-let rankToInt rank =
-    match rank with
-    | RoyalFlush -> 10
-    | StraightFlush _ -> 9
-    | FourOfAKind _ -> 8
-    | FullHouse _ -> 7
-    | Straight _ -> 6
-    | Flush _ -> 5
-    | ThreeOfAKind _ -> 4
-    | TwoPairs _ -> 3
-    | OnePair _ -> 2
-    | HighCard _ -> 1
 
 let parseCardValue rawValue = 
     match rawValue with
@@ -52,43 +37,31 @@ let groupByCount (values: int list) =
         acc |> Map.change counts (fun current -> 
             match current with
             | None -> Some [value]
-            | Some existing -> Some (existing @ [value]))
+            | Some existing -> Some (value :: existing))
 
     values 
     |> List.countBy id 
     |> List.fold group Map.empty
-
-let tryNumPairs groups =
-    groups 
-    |> Map.tryFind 2 
-    |> Option.map List.length 
-    |> Option.defaultValue 0    
 
 let evaluateMultiples (values: int list) : Hand =
     let groups = groupByCount values
 
     let four = groups |> Map.tryFind 4
     let three = groups |> Map.tryFind 3
-    let ones = groups |> Map.tryFind 1 |> Option.defaultValue []
-    let numPairs = tryNumPairs groups
+    let ones = groups |> Map.tryFind 1 |> Option.defaultValue [] |> List.sortDescending
+    let numPairs = groups |> Map.tryFind 2 |> Option.map List.length |> Option.defaultValue 0
     
     match (four, three, numPairs) with
     | (Some vals, _, _) -> FourOfAKind vals.Head
     | (None, Some vals, 0) -> ThreeOfAKind vals.Head
     | (None, Some vals, 1) -> FullHouse vals.Head
     | (None, None, 1) -> 
-        OnePair (
-            pair = groups.[2].Head, 
-            kickers = List.sortDescending ones)
+        OnePair (pair = groups.[2].Head, kickers = ones)
     | (None, None, 2) -> 
-        TwoPairs (
-            highPair = List.head groups.[2], 
-            lowPair = List.last groups.[2], 
-            kicker = List.head ones)
+        TwoPairs (highPair = List.head groups.[2], lowPair = List.last groups.[2], kicker = List.head ones)
     | (None, None, 0) when not values.IsEmpty -> 
-        HighCard (List.sortDescending ones)
+        HighCard ones
     | _ -> failwith $"Invalid hand configuration: {values}"
-
 
 let evaluateSequenceAndSuits (values: int list) (suits: char list) : Hand =
     let isFlush = suits |> List.distinct |> List.length = 1
@@ -131,29 +104,25 @@ let breakRankTie handOne handTwo =
     | (RoyalFlush, RoyalFlush) -> 0
     | _ -> failwith $"Both hands need to have the same rank in order to break a rank tie."
 
-let compareRanks rankOne rankTwo =
-    match compare rankOne rankTwo with
-    | x when x > 0 -> Greater
-    | x when x < 0 -> Less
-    | 0 -> Equal
-    | _ -> failwith "Unreachable: compare should only return -1, 0, or 1"
-
 let winnerOfRound (line: string) : Player =
     let cardTokens = line.Split " " |> Array.toList
-    let handOne = handCreate(cardTokens[0..4])
-    let handTwo = handCreate(cardTokens[5..9])
 
-    let rankComparison = compareRanks (rankToInt handOne) (rankToInt handTwo) 
+    if List.length cardTokens <> 10 then
+        failwith "There must be exactly ten cards in a round.";
+    else
+        let handOne = handCreate(cardTokens[0..4])
+        let handTwo = handCreate(cardTokens[5..9])
 
-    match rankComparison with
-    | Greater -> PlayerOne
-    | Less -> PlayerTwo
-    | Equal -> 
-        match breakRankTie handOne handTwo with
-        | x when x > 0 -> PlayerOne
-        | x when x < 0 -> PlayerTwo
-        | 0 -> failwith "Tie detected: Hands have identical rank and card values, which should not be possible"
-        | _ -> failwith "Unreachable: breakRankTie should only return -1, 0, or 1"
+        match (handOne, handTwo) with
+        | (h1, h2) when h1 > h2 -> PlayerOne
+        | (h1, h2) when h1 < h2 -> PlayerTwo
+        | (h1, h2) when h1 = h2 ->
+            match breakRankTie handOne handTwo with
+            | x when x > 0 -> PlayerOne
+            | x when x < 0 -> PlayerTwo
+            | 0 -> failwith "Tie detected: Hands have identical rank and card values, which should not be possible."
+            | _ -> failwith "Unreachable: breakRankTie should only return -1, 0, or 1."
+        | _ -> failwith "Unreachable: Hands are always >, <, or =."
 
 let countWins player lines =
     lines
