@@ -1,7 +1,4 @@
-﻿
-
-open System
-open System.IO
+﻿open System.IO
 
 type Player = PlayerOne | PlayerTwo
 
