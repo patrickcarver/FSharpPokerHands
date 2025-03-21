@@ -94,6 +94,12 @@ let createHand (cardTokens: string list) : Hand =
     | HighCard _ -> evaluateSequenceAndSuits values suits
     | other -> other
 
+/// <summary>
+/// Determines the winner of a round of Poker
+/// </summary>
+/// <param name="line">A space-delimited string that represents 10 cards; 
+/// first 5 belong to Player One, the last 5 to Player Two</param>
+/// <returns>The winning Player of this round of Poker</returns>
 let winnerOfRound (line: string) : Player =
     let cardTokens = line.Split " " |> Array.toList
     let handOne = createHand cardTokens[0..4]
@@ -105,23 +111,38 @@ let winnerOfRound (line: string) : Player =
     | (h1, h2) when h1 = h2 -> failwith "Two hands should not be tied"
     | _ -> failwith "Unreachable: two hands should return a result with >, <, or =."
 
+/// <summary>
+/// Counts the wins of the specified player
+/// </summary>
+/// <param name="player">The player who's wins to count</param>
+/// <param name="lines">A Seq that each item represent a round of Poker</param>
+/// <returns>An int that is the player's total wins from the Seq provided</returns>
 let countWins player lines =
     lines
     |> Seq.map winnerOfRound
     |> Seq.filter (fun p -> p = player)
     |> Seq.length
 
-let validateInputFile args =
+/// <summary>
+/// Validates if there is a file name given and that if it exists
+/// </summary>
+/// <param name="args">The array that contains the file name; should be only one item</param>
+/// <returns>A Result that's either Ok fileName or Error message</return>
+let validateInputFile (args: string array) : Result<string, string> =
     match args with
     | [||] -> 
         Error "Missing input file name parameter."
-    | [|fileName|] when not (File.Exists fileName) -> 
+    | [|fileName|] when not (File.Exists fileName) ->
         Error $"The file '{fileName}' does not exist."
     | [|fileName|] -> 
         Ok fileName
     | _ -> 
         Error "Too many arguments provided."
 
+/// <summary>
+/// Prints the total wins of Player One given a formatted text file
+/// </summary>
+/// <param name="args">The command line parameter array</param>
 [<EntryPoint>]
 let main args =
     match validateInputFile args with
