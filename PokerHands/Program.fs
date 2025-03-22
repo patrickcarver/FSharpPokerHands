@@ -1,4 +1,6 @@
-﻿open System.IO
+﻿module PokerHands
+
+open System.IO
 
 type Player = PlayerOne | PlayerTwo
 
@@ -16,7 +18,12 @@ type Hand =
 | StraightFlush of Rank
 | RoyalFlush
 
-let parseCardValue rawValue = 
+type PokerError =
+| MissingFileArgument
+| TooManyArguments
+| FileNotFound of string
+
+let parseCardValue (rawValue: char)  = 
     match rawValue with
     | 'A' -> 14
     | 'K' -> 13
@@ -128,16 +135,16 @@ let countWins player lines =
 /// </summary>
 /// <param name="args">The array that contains the file name; should be only one item</param>
 /// <returns>A Result that's either Ok fileName or Error message</return>
-let validateInputFile (args: string array) : Result<string, string> =
+let validateInputFile (args: string array) : Result<string, PokerError> =
     match args with
     | [||] -> 
-        Error "Missing input file name parameter."
-    | [|fileName|] when not (File.Exists fileName) ->
-        Error $"The file '{fileName}' does not exist."
+        Error MissingFileArgument 
+    | [|fileName|] when not (File.Exists fileName) -> 
+        Error (FileNotFound fileName)
     | [|fileName|] -> 
         Ok fileName
     | _ -> 
-        Error "Too many arguments provided."
+        Error TooManyArguments
 
 /// <summary>
 /// Prints the total wins of Player One given a formatted text file
@@ -151,6 +158,8 @@ let main args =
         |> countWins PlayerOne 
         |> printfn "Player 1 wins: %i"
         0
-    | Error message ->
-        printfn "%s" message
+    | Error error ->
+        match error with
+        | MissingFileArgument -> printfn "Missing input file name parameter."
+        | _ -> printfn "Error catch all"
         1
