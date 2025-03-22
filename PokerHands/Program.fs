@@ -1,6 +1,8 @@
 ﻿module PokerHands
 
+open System
 open System.IO
+open System.Text.RegularExpressions
 
 type Player = PlayerOne | PlayerTwo
 
@@ -19,9 +21,11 @@ type Hand =
 | RoyalFlush
 
 type PokerError =
-| MissingFileArgument
-| TooManyArguments
-| FileNotFound of string
+| MissingFileArgument // File
+| TooManyArguments // File
+| FileNotFound of string // File
+| InvalidLine of string // Tokenize to cards
+| DuplicateCards of string // Tokenize to cards
 
 let parseCardValue (rawValue: char)  = 
     match rawValue with
@@ -100,6 +104,21 @@ let createHand (cardTokens: string list) : Hand =
     match multipleHand with 
     | HighCard _ -> evaluateSequenceAndSuits values suits
     | other -> other
+
+let tokenizeToCards (line: string) : Result<string list, PokerError> =
+    let pattern = 
+        @"^([2-9TJQKA])([CDSH])(?:\s+([2-9TJQKA])([CDSH])){9}$"
+    
+    if Regex.IsMatch (line, pattern) then
+        let cardTokens = line.ToUpper().Split(" ", StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+        let uniqueCardCount = cardTokens |> List.distinct |> List.length
+        
+        match uniqueCardCount with
+        | 10 -> Ok cardTokens
+        | _ -> Error (DuplicateCards line)
+    
+    else
+        Error (InvalidLine line)
 
 /// <summary>
 /// Determines the winner of a round of Poker
