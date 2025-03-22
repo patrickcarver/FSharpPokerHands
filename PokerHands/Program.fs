@@ -109,8 +109,10 @@ let tokenizeToCards (line: string) : Result<string list, PokerError> =
     let pattern = 
         @"^([2-9TJQKA])([CDSH])(?:\s+([2-9TJQKA])([CDSH])){9}$"
     
-    if Regex.IsMatch (line, pattern) then
-        let cardTokens = line.ToUpper().Split(" ", StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+    let upperLine = line.ToUpper();
+
+    if Regex.IsMatch (upperLine, pattern) then
+        let cardTokens = upperLine.Split(" ", StringSplitOptions.RemoveEmptyEntries) |> Array.toList
         let uniqueCardCount = cardTokens |> List.distinct |> List.length
         
         match uniqueCardCount with

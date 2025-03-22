@@ -32,10 +32,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="MSTestSettings.fs" />
+    <Compile Include="TokenizeCardsTests.fs" />
     <Compile Include="ValidateInputFileTests.fs" />
   </ItemGroup>
-
-  <ItemGroup />
 
   <ItemGroup>
     <ProjectReference Include="..\PokerHands\PokerHands.fsproj" />
