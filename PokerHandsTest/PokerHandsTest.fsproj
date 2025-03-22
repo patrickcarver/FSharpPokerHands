@@ -32,7 +32,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="MSTestSettings.fs" />
-    <Compile Include="Test1.fs" />
+    <Compile Include="ValidateInputFileTests.fs" />
   </ItemGroup>
 
   <ItemGroup />

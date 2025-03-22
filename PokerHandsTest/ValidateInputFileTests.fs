@@ -6,7 +6,7 @@ open FsUnit.MsTest
 open PokerHands
 
 [<TestClass>]
-type Test1 () =
+type ValidateInputFileTests () =
     [<TestMethod>]
     member _.``validateInputFile returns Error for empty args``() =
         match validateInputFile [||] with
