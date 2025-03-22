@@ -134,7 +134,7 @@ let countWins player lines =
 /// Validates if there is a file name given and that if it exists
 /// </summary>
 /// <param name="args">The array that contains the file name; should be only one item</param>
-/// <returns>A Result that's either Ok fileName or Error message</return>
+/// <returns>A Result that's either Ok fileName or Error</return>
 let validateInputFile (args: string array) : Result<string, PokerError> =
     match args with
     | [||] -> 
@@ -161,5 +161,7 @@ let main args =
     | Error error ->
         match error with
         | MissingFileArgument -> printfn "Missing input file name parameter."
+        | TooManyArguments -> printfn "Too many arguments passed to command line."
+        | FileNotFound fileName -> printfn "The file '%s' does not exist." fileName
         | _ -> printfn "Error catch all"
         1
