@@ -7,10 +7,6 @@ open PokerHands
 
 [<TestClass>]
 type TokenizeCardsTests () =
-    // Duplicate Cards
-    // Invalid Line
-    // Ok 
-
     [<DataTestMethod>]
     [<DataRow("8C TS KC 9H 4S 7D 2S 5D 3S AC")>]
     [<DataRow("8c ts kc 9h 4s 7d 2s 5d 3s ac")>]
