@@ -20,12 +20,10 @@ type Hand =
 | StraightFlush of Rank
 | RoyalFlush
 
-type PokerError =
-| MissingFileArgument // File
-| TooManyArguments // File
-| FileNotFound of string // File
-| InvalidLine of string // Tokenize to cards
-| DuplicateCards of string // Tokenize to cards
+type InputFileError =
+| MissingFileArgument
+| TooManyArguments
+| FileNotFound of string
 
 let parseCardValue (rawValue: char)  = 
     match rawValue with
@@ -105,7 +103,12 @@ let createHand (cardTokens: string list) : Hand =
     | HighCard _ -> evaluateSequenceAndSuits values suits
     | other -> other
 
-let tokenizeToCards (line: string) : Result<string list, PokerError> =
+/// <summary>
+/// Valid and split a line into tokens of cards
+/// </summary>
+/// <param name="line">The string that represents the 10 cards of a two player Poker round</param>
+/// <returns>A Result of an Ok string list of card tokens or a PokerError</returns>
+let tokenizeToCards (line: string) =
     let pattern = 
         @"^([2-9TJQKA])([CDSH])(?:\s+([2-9TJQKA])([CDSH])){9}$"
     
@@ -116,11 +119,11 @@ let tokenizeToCards (line: string) : Result<string list, PokerError> =
         let uniqueCardCount = cardTokens |> List.distinct |> List.length
         
         match uniqueCardCount with
-        | 10 -> Ok cardTokens
-        | _ -> Error (DuplicateCards line)
+        | 10 -> cardTokens
+        | _ -> failwith $"The line '{line}' has duplicate cards."
     
     else
-        Error (InvalidLine line)
+        failwith $"The line '{line}' is not a valid format for a round of Poker."
 
 /// <summary>
 /// Determines the winner of a round of Poker
@@ -128,24 +131,26 @@ let tokenizeToCards (line: string) : Result<string list, PokerError> =
 /// <param name="line">A space-delimited string that represents 10 cards; 
 /// first 5 belong to Player One, the last 5 to Player Two</param>
 /// <returns>The winning Player of this round of Poker</returns>
-let winnerOfRound (line: string) : Player =
-    let cardTokens = line.Split " " |> Array.toList
+let winnerOfRound (line: string) =
+    let cardTokens = tokenizeToCards line
+
     let handOne = createHand cardTokens[0..4]
     let handTwo = createHand cardTokens[5..9]
 
     match (handOne, handTwo) with
     | (h1, h2) when h1 > h2 -> PlayerOne
     | (h1, h2) when h1 < h2 -> PlayerTwo
-    | (h1, h2) when h1 = h2 -> failwith "Two hands should not be tied"
+    | (h1, h2) when h1 = h2 -> failwith "Two hands are tied which is not possible according to the requirements."
     | _ -> failwith "Unreachable: two hands should return a result with >, <, or =."
-
+    
+    
 /// <summary>
 /// Counts the wins of the specified player
 /// </summary>
 /// <param name="player">The player who's wins to count</param>
 /// <param name="lines">A Seq that each item represent a round of Poker</param>
 /// <returns>An int that is the player's total wins from the Seq provided</returns>
-let countWins player lines =
+let countWins (player) (lines) : int =
     lines
     |> Seq.map winnerOfRound
     |> Seq.filter (fun p -> p = player)
@@ -156,7 +161,7 @@ let countWins player lines =
 /// </summary>
 /// <param name="args">The array that contains the file name; should be only one item</param>
 /// <returns>A Result that's either Ok fileName or Error</return>
-let validateInputFile (args: string array) : Result<string, PokerError> =
+let validateInputFile (args: string array) : Result<string, InputFileError> =
     match args with
     | [||] -> 
         Error MissingFileArgument 
@@ -175,14 +180,17 @@ let validateInputFile (args: string array) : Result<string, PokerError> =
 let main args =
     match validateInputFile args with
     | Ok fileName -> 
-        File.ReadLines fileName 
-        |> countWins PlayerOne 
-        |> printfn "Player 1 wins: %i"
-        0
+        try
+            let wins = File.ReadLines fileName |> countWins PlayerOne
+            printfn "Player 1 wins: %i" wins
+            0
+        with
+        | ex -> 
+            printfn "Error: %s" ex.Message
+            1
     | Error error ->
         match error with
         | MissingFileArgument -> printfn "Missing input file name parameter."
         | TooManyArguments -> printfn "Too many arguments passed to command line."
         | FileNotFound fileName -> printfn "The file '%s' does not exist." fileName
-        | _ -> printfn "Error catch all"
         1
