@@ -4,60 +4,91 @@ open System
 open System.IO
 open System.Text.RegularExpressions
 
+/// Type for Player 1 or Player 2
 type Player = PlayerOne | PlayerTwo
 
-type Rank = int
+/// Type that aliases int to represent values for cards
+type CardValue = CardValue of int
 
+/// Type for a hand of Poker
 type Hand =
-| HighCard of Rank list
-| OnePair of pair: Rank * kickers: Rank list
-| TwoPairs of highPair: Rank * lowPair: Rank * kicker: Rank
-| ThreeOfAKind of Rank
-| Flush of Rank list
-| Straight of Rank
-| FullHouse of Rank
-| FourOfAKind of Rank
-| StraightFlush of Rank
+| HighCard of CardValue list
+| OnePair of pair: CardValue * kickers: CardValue list
+| TwoPairs of highPair: CardValue * lowPair: CardValue * kicker: CardValue
+| ThreeOfAKind of CardValue
+| Flush of CardValue list
+| Straight of CardValue
+| FullHouse of CardValue
+| FourOfAKind of CardValue
+| StraightFlush of CardValue
 | RoyalFlush
 
+/// Errors used for input issues.
 type InputFileError =
 | MissingFileArgument
 | TooManyArguments
 | FileNotFound of string
 
-let parseCardValue (rawValue: char)  = 
+let RoyalFlushValues = 
+    [CardValue 14; CardValue 13; CardValue 12; CardValue 11; CardValue 10]
+
+/// <summary>
+/// Transform the char card value to an int
+/// </summary>
+/// <param name="rawValue">Char value of a card</param>
+let parseCardValue (rawValue: char) : CardValue = 
     match rawValue with
-    | 'A' -> 14
-    | 'K' -> 13
-    | 'Q' -> 12
-    | 'J' -> 11
-    | 'T' -> 10
-    | c when c >= '2' && c <= '9' -> int (string c) 
+    | 'A' -> CardValue 14
+    | 'K' -> CardValue 13
+    | 'Q' -> CardValue 12
+    | 'J' -> CardValue 11
+    | 'T' -> CardValue 10
+    | c when c >= '2' && c <= '9' -> CardValue (int (string c)) 
     | _ -> failwith $"Invalid value {rawValue}"   
 
-let parseCardTokens (cardTokens: string list) =
+/// <summary>
+/// Separate card values and suits into two lists
+/// </summary>
+/// <param name="cardTokens">A list of strings that represent cards</param>
+let parseCardTokens (cardTokens: string list) : CardValue list * char list =
     cardTokens 
     |> List.map(fun ct -> (parseCardValue ct.[0], ct.[1])) 
     |> List.unzip
 
-let groupByCount (values: int list) =
-    let group acc (value, counts) =
+/// <summary>
+/// Return a Map of the count of each value in a list of cards
+/// </summary>
+/// <param name="values">card values used for a hand</param>
+let groupByCount (values: CardValue list) : Map<int, CardValue list> =
+    let group acc (CardValue value, counts) =
         acc |> Map.change counts (fun current -> 
             match current with
-            | None -> Some [value]
-            | Some existing -> Some (value :: existing))
+            | None -> Some [CardValue value]
+            | Some existing -> Some (CardValue value :: existing))
 
     values 
     |> List.countBy id 
     |> List.fold group Map.empty
 
+/// <summary>
+/// Find out the number of pairs to be used in a hand.
+/// </summary>
+/// <param name="groups">A Map of the counts of each card value for a hand</param>
 let tryNumPairs groups =
     groups 
     |> Map.tryFind 2 
     |> Option.map List.length 
     |> Option.defaultValue 0    
 
-let evaluateMultiples (values: int list) : Hand =
+/// <summary>
+/// Tries to create a Hand that has multiples of same card values
+/// </summary>
+/// <description>
+/// Tries to create One Pair, Two Pairs, Three of a Kind, Full House, or Four of a Kind.
+/// If it cannot do that, a High Card hand is returned.
+/// </description>
+/// <param name="values">An int list of card values for a hand</param>
+let evaluateMultiples (values: CardValue list) : Hand =
     let groups = groupByCount values
 
     let four = groups |> Map.tryFind 4
@@ -82,19 +113,36 @@ let evaluateMultiples (values: int list) : Hand =
         HighCard (List.sortDescending ones)
     | _ -> failwith $"Invalid hand configuration: {values}"
 
-let evaluateSequenceAndSuits (values: int list) (suits: char list) : Hand =
+/// <summary>
+/// Tries to create a Hand that is either some flavor of straight or flush.
+/// </summary>
+/// <description>
+/// Tries to create a Straight, Flush, Straight Flush, or Royal Flush
+/// If it cannot do that, a High Card hand is returned.
+/// </description>
+/// <param name="values">An int list of card values for a hand</param>
+/// <param name="suits">A char list of card suits for a hand</param>
+let evaluateSequenceAndSuits (values: CardValue list) (suits: char list) : Hand =
+    let createDescendingCardValues (CardValue start) (CardValue last) : CardValue list =
+        [start .. -1 .. last] |> List.map CardValue
+
     let isFlush = suits |> List.distinct |> List.length = 1
     
     let sortedValues = List.sortByDescending id values
-    let isStraight = (sortedValues = [sortedValues.[0] .. -1 .. sortedValues.[4]])
+    let descendingCardValues = createDescendingCardValues sortedValues.[0] sortedValues.[4]
+    let isStraight = (sortedValues = descendingCardValues)
 
     match (isFlush, isStraight) with
     | (false, false) -> HighCard sortedValues
     | (true, false) -> Flush sortedValues
     | (false, true) -> Straight sortedValues.Head
-    | (true, true) when sortedValues = [14; 13; 12; 11; 10] -> RoyalFlush 
+    | (true, true) when sortedValues = RoyalFlushValues -> RoyalFlush 
     | (true, true) -> StraightFlush sortedValues.Head
-    
+
+/// <summary>
+/// Create a ranked Poker hand from a list of card tokens
+/// </summary>
+/// <param name="cardTokens">card tokens</param>
 let createHand (cardTokens: string list) : Hand =
     let (values, suits) = parseCardTokens cardTokens
     let multipleHand = evaluateMultiples values
@@ -107,9 +155,17 @@ let createHand (cardTokens: string list) : Hand =
 /// Valid and split a line into tokens of cards
 /// </summary>
 /// <param name="line">The string that represents the 10 cards of a two player Poker round</param>
-/// <returns>A Result of an Ok string list of card tokens or a PokerError</returns>
-let tokenizeToCards (line: string) =
-    let pattern = 
+/// <returns>A string list of card tokens.</returns>
+/// <exception>Thrown if the line is not a valid format or if there are duplicate cards</exception>
+let tokenizeToCards (line: string) : string list =
+
+    // This is the pattern used to validate a line:
+    // A card should be two chars, the first is the value, the second is the suit.
+    // Values must be a digit 2 through 9 or character T, J, Q, K, or A (Ten, Jack, Queen, King, Ace).
+    // Suits must be character C, D, S, or H (Clubs, Diamonds, Spades, or Hearts).
+    // Each card must be separated by at least one whitespace char.
+    // There must be exactly 10 cards.    
+    let pattern =  
         @"^([2-9TJQKA])([CDSH])(?:\s+([2-9TJQKA])([CDSH])){9}$"
     
     let upperLine = line.ToUpper();
@@ -131,7 +187,7 @@ let tokenizeToCards (line: string) =
 /// <param name="line">A space-delimited string that represents 10 cards; 
 /// first 5 belong to Player One, the last 5 to Player Two</param>
 /// <returns>The winning Player of this round of Poker</returns>
-let winnerOfRound (line: string) =
+let winnerOfRound (line: string) : Player =
     let cardTokens = tokenizeToCards line
 
     let handOne = createHand cardTokens[0..4]
@@ -142,7 +198,6 @@ let winnerOfRound (line: string) =
     | (h1, h2) when h1 < h2 -> PlayerTwo
     | (h1, h2) when h1 = h2 -> failwith "Two hands are tied which is not possible according to the requirements."
     | _ -> failwith "Unreachable: two hands should return a result with >, <, or =."
-    
     
 /// <summary>
 /// Counts the wins of the specified player
@@ -181,8 +236,9 @@ let main args =
     match validateInputFile args with
     | Ok fileName -> 
         try
-            let wins = File.ReadLines fileName |> countWins PlayerOne
-            printfn "Player 1 wins: %i" wins
+            File.ReadLines fileName 
+            |> countWins PlayerOne 
+            |> printfn "Player 1 wins: %i" 
             0
         with
         | ex -> 

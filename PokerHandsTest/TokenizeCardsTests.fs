@@ -12,10 +12,7 @@ type TokenizeCardsTests () =
     [<DataRow("8c ts kc 9h 4s 7d 2s 5d 3s ac")>]
     [<DataRow("8C   TS   KC     9H      4S      7D  2S   5D   3S AC")>]
     member _.``Ok line when it parses a valid line`` (line: string) =
-        try
-            tokenizeToCards line |> should equal ["8C"; "TS"; "KC"; "9H"; "4S"; "7D"; "2S"; "5D"; "3S"; "AC"]
-        with
-        | Failure message -> Assert.Fail $"Expected to get a string list of card tokens, but got an exception: {message}."
+        tokenizeToCards line |> should equal ["8C"; "TS"; "KC"; "9H"; "4S"; "7D"; "2S"; "5D"; "3S"; "AC"]
 
     [<DataTestMethod>]
     [<DataRow("")>]
