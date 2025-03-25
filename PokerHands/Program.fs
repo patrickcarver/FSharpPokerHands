@@ -95,6 +95,17 @@ let groupByCardCount (values: CardValue list) : CardCountMap =
     |> CardCountMap
 
 /// <summary>
+/// Extract the list of card values with a count of 1
+/// </summary>
+/// <param name="cardCount">A Map of the counts of each card value for a hand.</param>
+/// <returns>A sorted descending list of card values that have a count of 1 or an empty list.</returns>
+let tryOnes (CardCountMap cardCount) =
+    cardCount 
+    |> Map.tryFind 1 
+    |> Option.defaultValue [] 
+    |> List.sortDescending    
+
+/// <summary>
 /// Find out the number of pairs to be used in a hand.
 /// </summary>
 /// <param name="cardCount">A Map of the counts of each card value for a hand</param>
@@ -119,12 +130,7 @@ let tryNumPairs (CardCountMap cardCount) : int =
 let evaluateMultiples (CardCountMap cardCount) : Hand =
     let four = cardCount |> Map.tryFind 4
     let three = cardCount |> Map.tryFind 3
-    let ones = 
-        cardCount 
-        |> Map.tryFind 1 
-        |> Option.defaultValue [] 
-        |> List.sortDescending
-
+    let ones = tryOnes (CardCountMap cardCount)
     let numPairs = tryNumPairs (CardCountMap cardCount)
     
     match (four, three, numPairs) with
@@ -163,7 +169,7 @@ let evaluateSequenceAndSuits (values: CardValue list) (suits: Suit list) : Hand 
     let isFlush = suits |> List.distinct |> List.length = 1
     
     let sortedValues = List.sortDescending values
-    let descendingCardValues = createDescendingCardValues sortedValues.[0] sortedValues.[4]
+    let descendingCardValues =  createDescendingCardValues sortedValues.[0] sortedValues.[4]
     let isStraight = (sortedValues = descendingCardValues)
 
     match (isFlush, isStraight) with
