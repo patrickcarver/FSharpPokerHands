@@ -267,7 +267,7 @@ let countWins (player) (lines) : int =
 /// Validates if there is a file name given and that if it exists
 /// </summary>
 /// <param name="args">The array that contains the file name; should be only one item</param>
-/// <returns>A Result that's either Ok fileName or Error</return>
+/// <returns>A Result that's either Ok fileName or Error</returns>
 let validateInputFile (args: string array) : Result<string, InputFileError> =
     match args with
     | [||] -> 
