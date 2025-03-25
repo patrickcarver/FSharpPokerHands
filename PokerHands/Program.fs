@@ -39,6 +39,9 @@ type InputFileError =
 | TooManyArguments
 | FileNotFound of string
 
+/// <summary>
+/// A list of CardValues used to check if another list of CardValues is a RoyalFlush
+/// </summary>
 let RoyalFlushValues : CardValue list = 
     [CardValue 14; CardValue 13; CardValue 12; CardValue 11; CardValue 10]
 
